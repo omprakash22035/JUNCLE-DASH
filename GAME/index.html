@@ -1,0 +1,1341 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#10221d">
+  <title>Jungle Dash — Endless Runner</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #10221d;
+      color: #fff8e7;
+      font-synthesis: none;
+      text-rendering: optimizeLegibility;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      min-width: 320px;
+      min-height: 100vh;
+      margin: 0;
+      display: grid;
+      place-items: center;
+      padding: 20px;
+      overflow: hidden;
+      background:
+        radial-gradient(ellipse at 50% 0%, #355b42 0%, transparent 55%),
+        linear-gradient(145deg, #10221d, #1d3325 55%, #101b18);
+    }
+
+    .game-shell {
+      position: relative;
+      width: min(100%, 1100px);
+      aspect-ratio: 16 / 10;
+      min-height: 420px;
+      overflow: hidden;
+      border: 1px solid rgb(255 248 231 / 18%);
+      border-radius: 22px;
+      background: #8ebc82;
+      box-shadow: 0 28px 90px rgb(0 0 0 / 45%), 0 0 0 8px rgb(255 255 255 / 3%);
+      isolation: isolate;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      touch-action: none;
+    }
+
+    #scene { position: absolute; inset: 0; }
+
+    .topbar {
+      position: absolute;
+      z-index: 4;
+      inset: 20px 22px auto;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      pointer-events: none;
+    }
+
+    .brand {
+      text-shadow: 0 2px 14px rgb(0 0 0 / 45%);
+    }
+
+    .brand-name {
+      margin: 0;
+      font-size: clamp(19px, 3vw, 30px);
+      font-weight: 950;
+      letter-spacing: .09em;
+      line-height: 1;
+      text-transform: uppercase;
+    }
+
+    .brand-name span { color: #ffd36a; }
+
+    .brand-caption {
+      margin: 7px 0 0;
+      color: rgb(255 248 231 / 78%);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: .2em;
+      text-transform: uppercase;
+    }
+
+    .stats {
+      display: flex;
+      gap: 9px;
+    }
+
+    .music-toggle {
+      align-self: stretch;
+      padding: 0 13px;
+      border: 1px solid rgb(255 255 255 / 22%);
+      border-radius: 13px;
+      background: rgb(12 28 23 / 76%);
+      color: #fff8e7;
+      cursor: pointer;
+      font: inherit;
+      font-size: 11px;
+      font-weight: 850;
+      letter-spacing: .05em;
+      pointer-events: auto;
+      backdrop-filter: blur(10px);
+    }
+
+    .music-toggle[aria-pressed="true"] { color: #ffdc80; }
+    .music-toggle:focus-visible { outline: 2px solid #ffdc80; outline-offset: 3px; }
+
+    .stat {
+      min-width: 82px;
+      padding: 9px 13px;
+      border: 1px solid rgb(255 255 255 / 20%);
+      border-radius: 13px;
+      background: rgb(12 28 23 / 62%);
+      box-shadow: 0 6px 22px rgb(0 0 0 / 15%);
+      text-align: right;
+      backdrop-filter: blur(10px);
+    }
+
+    .stat-label {
+      display: block;
+      color: #c3d0b8;
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: .13em;
+      text-transform: uppercase;
+    }
+
+    .stat-value {
+      display: block;
+      margin-top: 2px;
+      font-size: 19px;
+      font-variant-numeric: tabular-nums;
+      font-weight: 900;
+      line-height: 1;
+    }
+
+    .overlay {
+      position: absolute;
+      z-index: 3;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background: linear-gradient(90deg, rgb(9 25 19 / 45%), rgb(9 25 19 / 14%), rgb(9 25 19 / 45%));
+      transition: opacity .25s ease, visibility .25s ease;
+    }
+
+    .overlay.hidden {
+      visibility: hidden;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .panel {
+      width: min(100%, 430px);
+      padding: 30px;
+      border: 1px solid rgb(255 255 255 / 21%);
+      border-radius: 22px;
+      background: rgb(15 31 25 / 86%);
+      box-shadow: 0 22px 70px rgb(0 0 0 / 35%);
+      text-align: center;
+      backdrop-filter: blur(14px);
+    }
+
+    .eyebrow {
+      margin: 0 0 9px;
+      color: #ffd36a;
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: .22em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(34px, 7vw, 52px);
+      font-weight: 950;
+      letter-spacing: -.055em;
+      line-height: .98;
+    }
+
+    .panel-copy {
+      max-width: 330px;
+      margin: 14px auto 22px;
+      color: #d3ddcf;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .start-button {
+      width: 100%;
+      padding: 15px 20px;
+      border: 0;
+      border-radius: 13px;
+      background: linear-gradient(180deg, #ffdc80, #f4ae3c);
+      color: #29200f;
+      cursor: pointer;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 950;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      box-shadow: 0 5px 0 #bd7729, 0 12px 24px rgb(241 173 59 / 20%);
+      transition: transform .12s ease, filter .12s ease;
+    }
+
+    .start-button:hover { filter: brightness(1.08); transform: translateY(-1px); }
+    .start-button:active { transform: translateY(3px); box-shadow: 0 2px 0 #bd7729; }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 18px;
+      color: #d3ddcf;
+      font-size: 11px;
+    }
+
+    .controls span {
+      padding: 6px 9px;
+      border: 1px solid rgb(255 255 255 / 12%);
+      border-radius: 8px;
+      background: rgb(255 255 255 / 5%);
+    }
+
+    .best-line {
+      min-height: 17px;
+      margin: 14px 0 0;
+      color: #ffdb84;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .mobile-hint {
+      position: absolute;
+      z-index: 1;
+      right: 15px;
+      bottom: 12px;
+      left: 15px;
+      color: rgb(255 255 255 / 72%);
+      font-size: 10px;
+      font-weight: 700;
+      text-align: center;
+      text-shadow: 0 2px 8px #10221d;
+      pointer-events: none;
+    }
+
+    @media (max-width: 650px) {
+      body { padding: 0; }
+      .game-shell {
+        width: 100vw;
+        height: 100dvh;
+        min-height: 0;
+        aspect-ratio: auto;
+        border: 0;
+        border-radius: 0;
+      }
+      .topbar { inset: 14px 13px auto; }
+      .brand-name { font-size: clamp(17px, 5vw, 21px); }
+      .brand-caption { display: none; }
+      .stats { gap: 5px; }
+      .stat { min-width: 56px; padding: 8px 6px; }
+      .stat-value { font-size: 16px; }
+      .music-toggle { width: 30px; padding: 0; font-size: 0; }
+      .music-toggle::before { content: "♫"; font-size: 16px; }
+      .panel { padding: 25px 22px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="game-shell" aria-label="Jungle Dash endless runner game">
+    <canvas id="scene" aria-label="3D game area. Use arrow keys or swipe to dodge obstacles."></canvas>
+    <header class="topbar">
+      <div class="brand">
+        <p class="brand-name">Jungle <span>Dash</span></p>
+        <p class="brand-caption">Run wild. Stay free.</p>
+      </div>
+      <div class="stats" aria-live="polite">
+        <button class="music-toggle" id="music-toggle" type="button" aria-pressed="true" aria-label="Turn club music off">♫ Music on</button>
+        <div class="stat"><span class="stat-label">Distance</span><span class="stat-value" id="distance">0</span></div>
+        <div class="stat"><span class="stat-label">Coins</span><span class="stat-value" id="coins">0</span></div>
+      </div>
+    </header>
+    <section class="overlay" id="overlay">
+      <div class="panel">
+        <p class="eyebrow" id="eyebrow">An endless jungle escape</p>
+        <h1 id="title">The trail<br>is calling.</h1>
+        <p class="panel-copy" id="copy">Sprint through ancient ruins, scoop up golden relics, and see how far you can make it.</p>
+        <button class="start-button" id="start">Start running</button>
+        <div class="controls"><span>← → Change lanes</span><span>↑ Jump</span><span>↓ Slide</span></div>
+        <p class="best-line" id="best"></p>
+      </div>
+    </section>
+    <div class="mobile-hint">Swipe to move · Swipe up to jump · Swipe down to slide</div>
+  </main>
+  <script>
+    (() => {
+      "use strict";
+
+      const canvas = document.querySelector("#scene");
+      const gl = canvas.getContext("webgl", { antialias: true, alpha: false });
+      const overlay = document.querySelector("#overlay");
+      const startButton = document.querySelector("#start");
+      const distanceLabel = document.querySelector("#distance");
+      const coinsLabel = document.querySelector("#coins");
+      const bestLabel = document.querySelector("#best");
+      const title = document.querySelector("#title");
+      const eyebrow = document.querySelector("#eyebrow");
+      const copy = document.querySelector("#copy");
+      const musicToggle = document.querySelector("#music-toggle");
+      const impactDistance = 8;
+
+      const state = {
+        mode: "ready",
+        lane: 1,
+        lanePosition: 1,
+        jump: 0,
+        slide: 0,
+        distance: 0,
+        coins: 0,
+        speed: 24,
+        objects: [],
+        spawnDistance: 30,
+        roadScroll: 0,
+        lastTime: 0,
+        width: 0,
+        height: 0,
+        musicEnabled: true,
+        audioContext: null,
+        musicGain: null,
+        effectsGain: null,
+        noiseBuffer: null,
+        musicTimer: null,
+        beatStep: 0,
+        nextBeatTime: 0,
+        best: Number(localStorage.getItem("jungleDashBest") || 0)
+      };
+
+      const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+      const random = (min, max) => min + Math.random() * (max - min);
+
+      const scene = {
+        program: null,
+        buffer: null,
+        positionLocation: -1,
+        colorLocation: -1,
+        matrixLocation: null,
+        positions: [],
+        colors: [],
+        projection: new Float32Array(16),
+        view: new Float32Array(16),
+        viewProjection: new Float32Array(16)
+      };
+
+      function multiplyMatrices(out, a, b) {
+        for (let column = 0; column < 4; column++) {
+          for (let row = 0; row < 4; row++) {
+            out[column * 4 + row] =
+              a[row] * b[column * 4] +
+              a[4 + row] * b[column * 4 + 1] +
+              a[8 + row] * b[column * 4 + 2] +
+              a[12 + row] * b[column * 4 + 3];
+          }
+        }
+      }
+
+      function makePerspective(out, fieldOfView, aspect, near, far) {
+        const f = 1 / Math.tan(fieldOfView / 2);
+        out.fill(0);
+        out[0] = f / aspect;
+        out[5] = f;
+        out[10] = (far + near) / (near - far);
+        out[11] = -1;
+        out[14] = (2 * far * near) / (near - far);
+      }
+
+      function makeLookAt(out, eye, target) {
+        let zx = eye[0] - target[0];
+        let zy = eye[1] - target[1];
+        let zz = eye[2] - target[2];
+        let length = Math.hypot(zx, zy, zz);
+        zx /= length;
+        zy /= length;
+        zz /= length;
+        let xx = zz;
+        let xy = 0;
+        let xz = -zx;
+        length = Math.hypot(xx, xy, xz);
+        xx /= length;
+        xy /= length;
+        xz /= length;
+        const yx = zy * xz - zz * xy;
+        const yy = zz * xx - zx * xz;
+        const yz = zx * xy - zy * xx;
+        out[0] = xx; out[1] = yx; out[2] = zx; out[3] = 0;
+        out[4] = xy; out[5] = yy; out[6] = zy; out[7] = 0;
+        out[8] = xz; out[9] = yz; out[10] = zz; out[11] = 0;
+        out[12] = -(xx * eye[0] + xy * eye[1] + xz * eye[2]);
+        out[13] = -(yx * eye[0] + yy * eye[1] + yz * eye[2]);
+        out[14] = -(zx * eye[0] + zy * eye[1] + zz * eye[2]);
+        out[15] = 1;
+      }
+
+      function initializeScene() {
+        if (!gl) {
+          copy.textContent = "This browser does not support the 3D graphics needed to play. Try a browser with WebGL enabled.";
+          startButton.disabled = true;
+          return;
+        }
+        const vertexShader = gl.createShader(gl.VERTEX_SHADER);
+        gl.shaderSource(vertexShader, `
+          attribute vec3 aPosition;
+          attribute vec3 aColor;
+          uniform mat4 uViewProjection;
+          varying vec3 vColor;
+          varying float vDepth;
+          void main() {
+            vec4 position = uViewProjection * vec4(aPosition, 1.0);
+            gl_Position = position;
+            vDepth = position.w;
+            vColor = aColor;
+          }
+        `);
+        gl.compileShader(vertexShader);
+        if (!gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS)) {
+          throw new Error(`3D vertex shader failed: ${gl.getShaderInfoLog(vertexShader)}`);
+        }
+        const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+        gl.shaderSource(fragmentShader, `
+          precision mediump float;
+          varying vec3 vColor;
+          varying float vDepth;
+          void main() {
+            float haze = smoothstep(55.0, 155.0, vDepth);
+            vec3 fogColor = vec3(0.38, 0.52, 0.36);
+            gl_FragColor = vec4(mix(vColor, fogColor, haze * 0.72), 1.0);
+          }
+        `);
+        gl.compileShader(fragmentShader);
+        if (!gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS)) {
+          throw new Error(`3D fragment shader failed: ${gl.getShaderInfoLog(fragmentShader)}`);
+        }
+        const program = gl.createProgram();
+        gl.attachShader(program, vertexShader);
+        gl.attachShader(program, fragmentShader);
+        gl.linkProgram(program);
+        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+          throw new Error(`3D scene setup failed: ${gl.getProgramInfoLog(program)}`);
+        }
+        scene.program = program;
+        scene.buffer = gl.createBuffer();
+        scene.positionLocation = gl.getAttribLocation(program, "aPosition");
+        scene.colorLocation = gl.getAttribLocation(program, "aColor");
+        scene.matrixLocation = gl.getUniformLocation(program, "uViewProjection");
+        gl.enable(gl.DEPTH_TEST);
+        gl.disable(gl.CULL_FACE);
+        gl.clearColor(.38, .52, .36, 1);
+      }
+
+      function initializeAudio() {
+        if (state.audioContext) return state.audioContext;
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContextClass) {
+          musicToggle.disabled = true;
+          musicToggle.textContent = "Audio unavailable";
+          musicToggle.setAttribute("aria-label", "Audio is not supported by this browser");
+          return null;
+        }
+
+        const audio = new AudioContextClass();
+        const master = audio.createGain();
+        const compressor = audio.createDynamicsCompressor();
+        master.gain.value = .72;
+        compressor.threshold.value = -18;
+        compressor.knee.value = 12;
+        compressor.ratio.value = 4;
+        compressor.attack.value = .004;
+        compressor.release.value = .18;
+        master.connect(compressor);
+        compressor.connect(audio.destination);
+
+        state.audioContext = audio;
+        state.musicGain = audio.createGain();
+        state.effectsGain = audio.createGain();
+        state.musicGain.gain.value = 0;
+        state.effectsGain.gain.value = .34;
+        state.musicGain.connect(master);
+        state.effectsGain.connect(master);
+
+        const noise = audio.createBuffer(1, audio.sampleRate, audio.sampleRate);
+        const samples = noise.getChannelData(0);
+        for (let i = 0; i < samples.length; i++) samples[i] = Math.random() * 2 - 1;
+        state.noiseBuffer = noise;
+        return audio;
+      }
+
+      function scheduleNoise(audio, start, duration, volume, cutoff, destination) {
+        const source = audio.createBufferSource();
+        const filter = audio.createBiquadFilter();
+        const gain = audio.createGain();
+        source.buffer = state.noiseBuffer;
+        filter.type = "highpass";
+        filter.frequency.value = cutoff;
+        gain.gain.setValueAtTime(volume, start);
+        gain.gain.exponentialRampToValueAtTime(.0001, start + duration);
+        source.connect(filter);
+        filter.connect(gain);
+        gain.connect(destination);
+        source.start(start);
+        source.stop(start + duration + .02);
+      }
+
+      function startMusic() {
+        const audio = initializeAudio();
+        if (!audio || !state.musicEnabled) return;
+        audio.resume();
+        const now = audio.currentTime;
+        state.musicGain.gain.cancelScheduledValues(now);
+        state.musicGain.gain.setTargetAtTime(.24, now, .12);
+        if (state.musicTimer) return;
+
+        state.beatStep = 0;
+        state.nextBeatTime = now + .06;
+        const stepDuration = 60 / 122 / 4;
+        const bassNotes = [55, 55, 65.41, 73.42, 55, 82.41, 73.42, 65.41];
+        const leadNotes = [440, 523.25, 659.25, 587.33, 523.25, 392, 440, 659.25];
+
+        function scheduleTone(frequency, start, duration, type, volume, destination, endFrequency) {
+          const oscillator = audio.createOscillator();
+          const gain = audio.createGain();
+          oscillator.type = type;
+          oscillator.frequency.setValueAtTime(frequency, start);
+          if (endFrequency) oscillator.frequency.exponentialRampToValueAtTime(endFrequency, start + duration);
+          gain.gain.setValueAtTime(.0001, start);
+          gain.gain.exponentialRampToValueAtTime(volume, start + .008);
+          gain.gain.exponentialRampToValueAtTime(.0001, start + duration);
+          oscillator.connect(gain);
+          gain.connect(destination);
+          oscillator.start(start);
+          oscillator.stop(start + duration + .02);
+        }
+
+        function scheduleStep(step, time) {
+          if (step % 4 === 0) {
+            scheduleTone(145, time, .2, "sine", .8, state.musicGain, 48);
+            scheduleTone(48, time, .16, "sine", .34, state.musicGain, 34);
+          }
+          if (step === 4 || step === 12) {
+            scheduleNoise(audio, time, .17, .3, 1400, state.musicGain);
+            scheduleTone(185, time, .12, "triangle", .16, state.musicGain, 105);
+            scheduleNoise(audio, time + .012, .09, .17, 5200, state.musicGain);
+          }
+          if (step % 2 === 0) {
+            scheduleNoise(audio, time, step === 14 ? .14 : .045, step === 14 ? .15 : .07, 7600, state.musicGain);
+          }
+          if (step % 2 === 0 && step !== 14) {
+            const bassIndex = (step / 2 + Math.floor(step / 8) * 2) % bassNotes.length;
+            scheduleTone(bassNotes[bassIndex], time, .19, "sawtooth", .22, state.musicGain);
+          }
+          if (step === 2 || step === 6 || step === 10 || step === 14) {
+            const note = leadNotes[(step / 2 + Math.floor(state.beatStep / 64)) % leadNotes.length];
+            scheduleTone(note, time, .24, "triangle", .095, state.musicGain);
+            scheduleTone(note * 2, time, .12, "sine", .035, state.musicGain);
+          }
+        }
+
+        state.musicTimer = window.setInterval(() => {
+          while (state.nextBeatTime < audio.currentTime + .12) {
+            scheduleStep(state.beatStep % 16, state.nextBeatTime);
+            state.nextBeatTime += stepDuration;
+            state.beatStep++;
+          }
+        }, 25);
+      }
+
+      function stopMusic() {
+        if (!state.audioContext || !state.musicGain) return;
+        const now = state.audioContext.currentTime;
+        state.musicGain.gain.cancelScheduledValues(now);
+        state.musicGain.gain.setTargetAtTime(.0001, now, .06);
+        if (state.musicTimer) {
+          window.clearInterval(state.musicTimer);
+          state.musicTimer = null;
+        }
+      }
+
+      function playEffect(effect) {
+        const audio = initializeAudio();
+        if (!audio || audio.state !== "running") return;
+        const now = audio.currentTime;
+        if (effect === "coin") {
+          scheduleEffectTone(880, now, .16, "sine", .45);
+          scheduleEffectTone(1320, now + .035, .2, "sine", .3);
+        } else if (effect === "jump") {
+          scheduleEffectTone(260, now, .19, "triangle", .22, 620);
+        } else if (effect === "slide") {
+          scheduleEffectTone(310, now, .16, "triangle", .15, 110);
+        } else if (effect === "hit") {
+          scheduleEffectTone(115, now, .32, "sawtooth", .36, 42);
+          scheduleNoise(audio, now, .18, .22, 900, state.effectsGain);
+        } else if (effect === "move") {
+          scheduleEffectTone(420, now, .07, "sine", .1, 660);
+        }
+
+        function scheduleEffectTone(frequency, start, duration, type, volume, endFrequency) {
+          const oscillator = audio.createOscillator();
+          const gain = audio.createGain();
+          oscillator.type = type;
+          oscillator.frequency.setValueAtTime(frequency, start);
+          if (endFrequency) oscillator.frequency.exponentialRampToValueAtTime(endFrequency, start + duration);
+          gain.gain.setValueAtTime(.0001, start);
+          gain.gain.exponentialRampToValueAtTime(volume, start + .008);
+          gain.gain.exponentialRampToValueAtTime(.0001, start + duration);
+          oscillator.connect(gain);
+          gain.connect(state.effectsGain);
+          oscillator.start(start);
+          oscillator.stop(start + duration + .02);
+        }
+      }
+
+      function updateMusicButton() {
+        musicToggle.setAttribute("aria-pressed", String(state.musicEnabled));
+        musicToggle.textContent = state.musicEnabled ? "♫ Music on" : "♫ Music off";
+        musicToggle.setAttribute("aria-label", state.musicEnabled ? "Turn club music off" : "Turn club music on");
+      }
+
+      function resize() {
+        const bounds = canvas.getBoundingClientRect();
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        canvas.width = Math.round(bounds.width * dpr);
+        canvas.height = Math.round(bounds.height * dpr);
+        if (gl) gl.viewport(0, 0, canvas.width, canvas.height);
+        state.width = bounds.width;
+        state.height = bounds.height;
+        draw();
+      }
+
+      function roadGeometry() {
+        const w = state.width;
+        const h = state.height;
+        return {
+          horizon: h * .29,
+          topLeft: w * .43,
+          topRight: w * .57,
+          bottomLeft: w * .09,
+          bottomRight: w * .91
+        };
+      }
+
+      function project(distance, lane) {
+        const { horizon, topLeft, topRight, bottomLeft, bottomRight } = roadGeometry();
+        const depth = clamp(1 - distance / 105, 0, 1);
+        const eased = depth * depth;
+        const y = horizon + (state.height * .98 - horizon) * eased;
+        const roadLeft = topLeft + (bottomLeft - topLeft) * eased;
+        const roadRight = topRight + (bottomRight - topRight) * eased;
+        const laneWidth = (roadRight - roadLeft) / 3;
+        return { x: roadLeft + laneWidth * (lane + .5), y, scale: .12 + eased * .95, laneWidth, depth };
+      }
+
+      function roundedRect(x, y, width, height, radius) {
+        const r = Math.min(radius, width / 2, height / 2);
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.arcTo(x + width, y, x + width, y + height, r);
+        ctx.arcTo(x + width, y + height, x, y + height, r);
+        ctx.arcTo(x, y + height, x, y, r);
+        ctx.arcTo(x, y, x + width, y, r);
+        ctx.closePath();
+      }
+
+      function drawTree(x, y, size, flip) {
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.scale(flip ? -1 : 1, 1);
+        ctx.fillStyle = "rgba(18, 46, 30, .9)";
+        ctx.fillRect(-size * .08, -size * .65, size * .16, size * .65);
+        ctx.fillStyle = "#214a32";
+        ctx.beginPath();
+        ctx.moveTo(0, -size * 1.35);
+        ctx.lineTo(size * .5, -size * .52);
+        ctx.lineTo(size * .25, -size * .59);
+        ctx.lineTo(size * .59, -size * .05);
+        ctx.lineTo(-size * .59, -size * .05);
+        ctx.lineTo(-size * .25, -size * .59);
+        ctx.lineTo(-size * .5, -size * .52);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = "rgba(132, 159, 82, .42)";
+        ctx.beginPath();
+        ctx.ellipse(-size * .16, -size * .83, size * .12, size * .24, -.4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      function drawBackground() {
+        const { width: w, height: h } = state;
+        const { horizon } = roadGeometry();
+        const sky = ctx.createLinearGradient(0, 0, 0, horizon + 60);
+        sky.addColorStop(0, "#76ad79");
+        sky.addColorStop(1, "#d3c57e");
+        ctx.fillStyle = sky;
+        ctx.fillRect(0, 0, w, h);
+
+        ctx.fillStyle = "#638b52";
+        ctx.beginPath();
+        ctx.moveTo(0, horizon + 13);
+        ctx.quadraticCurveTo(w * .2, horizon - 10, w * .38, horizon + 18);
+        ctx.quadraticCurveTo(w * .67, horizon - 24, w, horizon + 15);
+        ctx.lineTo(w, h);
+        ctx.lineTo(0, h);
+        ctx.fill();
+
+        const ground = ctx.createLinearGradient(0, horizon, 0, h);
+        ground.addColorStop(0, "#748c45");
+        ground.addColorStop(.44, "#41623a");
+        ground.addColorStop(1, "#203b2e");
+        ctx.fillStyle = ground;
+        ctx.fillRect(0, horizon, w, h - horizon);
+
+        const phase = (state.roadScroll % 1);
+        for (let i = 0; i < 9; i++) {
+          const depth = (i + phase) / 9;
+          const perspective = depth * depth;
+          const y = horizon + (h - horizon) * perspective;
+          const size = 8 + perspective * 65;
+          const leftX = w * (.42 - perspective * .39);
+          const rightX = w * (.58 + perspective * .39);
+          drawTree(leftX, y, size, false);
+          drawTree(rightX, y, size, true);
+        }
+
+        const { topLeft, topRight, bottomLeft, bottomRight } = roadGeometry();
+        ctx.fillStyle = "#796442";
+        ctx.beginPath();
+        ctx.moveTo(topLeft, horizon);
+        ctx.lineTo(topRight, horizon);
+        ctx.lineTo(bottomRight, h);
+        ctx.lineTo(bottomLeft, h);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(topLeft, horizon);
+        ctx.lineTo(topRight, horizon);
+        ctx.lineTo(bottomRight, h);
+        ctx.lineTo(bottomLeft, h);
+        ctx.closePath();
+        ctx.clip();
+        const road = ctx.createLinearGradient(0, horizon, 0, h);
+        road.addColorStop(0, "#a98b5c");
+        road.addColorStop(.5, "#94744e");
+        road.addColorStop(1, "#755a3e");
+        ctx.fillStyle = road;
+        ctx.fillRect(topLeft, horizon, topRight - topLeft, h - horizon);
+
+        for (let i = 0; i < 14; i++) {
+          const depth = ((i + state.roadScroll * 2) % 14) / 14;
+          const t = depth * depth;
+          const y = horizon + (h - horizon) * t;
+          const left = topLeft + (bottomLeft - topLeft) * t;
+          const right = topRight + (bottomRight - topRight) * t;
+          ctx.strokeStyle = `rgba(49, 48, 31, ${.06 + t * .12})`;
+          ctx.lineWidth = 1 + t * 2;
+          ctx.beginPath();
+          ctx.moveTo(left, y);
+          ctx.lineTo(right, y);
+          ctx.stroke();
+        }
+
+        for (let divider = 1; divider <= 2; divider++) {
+          for (let i = 0; i < 8; i++) {
+            const depth = ((i + state.roadScroll * 1.8) % 8) / 8;
+            const t = depth * depth;
+            const y = horizon + (h - horizon) * t;
+            const left = topLeft + (bottomLeft - topLeft) * t;
+            const right = topRight + (bottomRight - topRight) * t;
+            const x = left + (right - left) * divider / 3;
+            const dash = 3 + t * 25;
+            ctx.fillStyle = `rgba(244, 215, 151, ${.18 + t * .46})`;
+            ctx.fillRect(x - 1, y, 2 + t * 2, dash);
+          }
+        }
+        ctx.restore();
+        ctx.strokeStyle = "rgba(255, 222, 153, .7)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(topLeft, horizon);
+        ctx.lineTo(bottomLeft, h);
+        ctx.moveTo(topRight, horizon);
+        ctx.lineTo(bottomRight, h);
+        ctx.stroke();
+      }
+
+      function drawCoin(object) {
+        const p = project(object.distance, object.lane);
+        if (p.depth <= 0) return;
+        const radius = 4 + p.scale * 9;
+        const wobble = Math.sin(state.distance * .14 + object.phase) * .12;
+        ctx.save();
+        ctx.translate(p.x, p.y - radius * 1.6);
+        ctx.scale(Math.max(.2, Math.abs(Math.cos(state.distance * .08 + object.phase))), 1);
+        ctx.fillStyle = "rgba(35, 25, 9, .28)";
+        ctx.beginPath();
+        ctx.ellipse(2, radius * 1.5, radius * .9, radius * .28, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#efaa2e";
+        ctx.beginPath();
+        ctx.arc(0, 0, radius * (1 + wobble), 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = "#ffe28a";
+        ctx.lineWidth = Math.max(1, radius * .2);
+        ctx.stroke();
+        ctx.fillStyle = "#fff1ac";
+        ctx.beginPath();
+        ctx.arc(-radius * .25, -radius * .28, radius * .17, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      function drawObstacle(object) {
+        const p = project(object.distance, object.lane);
+        if (p.depth <= 0) return;
+        const size = p.scale;
+        const width = p.laneWidth * .56;
+        const height = object.kind === "arch" ? 38 * size : 39 * size;
+        const x = p.x - width / 2;
+        const y = p.y - height;
+        ctx.fillStyle = "rgba(19, 24, 17, .28)";
+        ctx.beginPath();
+        ctx.ellipse(p.x, p.y, width * .6, 5 * size, 0, 0, Math.PI * 2);
+        ctx.fill();
+        if (object.kind === "rock") {
+          ctx.fillStyle = "#4a493b";
+          ctx.beginPath();
+          ctx.moveTo(x, p.y);
+          ctx.lineTo(x + width * .12, y + height * .36);
+          ctx.lineTo(x + width * .48, y);
+          ctx.lineTo(x + width * .82, y + height * .18);
+          ctx.lineTo(x + width, p.y);
+          ctx.closePath();
+          ctx.fill();
+          ctx.fillStyle = "#77725c";
+          ctx.beginPath();
+          ctx.moveTo(x + width * .12, y + height * .36);
+          ctx.lineTo(x + width * .48, y);
+          ctx.lineTo(x + width * .61, y + height * .44);
+          ctx.closePath();
+          ctx.fill();
+        } else if (object.kind === "log") {
+          ctx.fillStyle = "#5b3922";
+          roundedRect(x, y + height * .44, width, height * .56, 5 * size);
+          ctx.fill();
+          ctx.fillStyle = "#92613a";
+          ctx.beginPath();
+          ctx.ellipse(x + width * .15, y + height * .72, 4 * size, 5 * size, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = "#718747";
+          ctx.fillRect(x - 2 * size, y + height * .4, width + 4 * size, 4 * size);
+        } else {
+          ctx.fillStyle = "#684c32";
+          ctx.fillRect(x, y, width * .2, height);
+          ctx.fillRect(x + width * .8, y, width * .2, height);
+          ctx.fillStyle = "#855b39";
+          ctx.fillRect(x - width * .08, y, width * 1.16, height * .28);
+          ctx.fillStyle = "#3b3324";
+          ctx.fillRect(x + width * .2, y + height * .27, width * .6, height * .44);
+          ctx.fillStyle = "#a6814a";
+          ctx.fillRect(x + width * .07, y + height * .06, width * .12, height * .12);
+          ctx.fillRect(x + width * .81, y + height * .06, width * .12, height * .12);
+        }
+      }
+
+      function drawPlayer() {
+        const p = project(0, state.lanePosition);
+        const baseY = state.height * .88;
+        const scale = clamp(state.height / 580, .72, 1.2);
+        const run = state.mode === "running" ? Math.sin(state.distance * .65) : 0;
+        const jumpLift = state.jump > 0 ? Math.sin((1 - state.jump / .8) * Math.PI) * 75 * scale : 0;
+        const slideScale = state.slide > 0 ? .53 : 1;
+        const x = p.x;
+        const y = baseY - jumpLift;
+        const bodyW = 38 * scale;
+        const bodyH = 53 * scale * slideScale;
+
+        ctx.fillStyle = "rgba(13, 21, 15, .38)";
+        ctx.beginPath();
+        ctx.ellipse(x, baseY + 3, 29 * scale * (1 - jumpLift / 180), 8 * scale, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(state.lanePosition - state.lane > 0 ? .08 : state.lanePosition - state.lane < 0 ? -.08 : 0);
+
+        if (state.slide > 0) {
+          ctx.fillStyle = "#254a3b";
+          roundedRect(-bodyW * .7, -bodyH * .62, bodyW * 1.55, bodyH * .55, 12 * scale);
+          ctx.fill();
+          ctx.fillStyle = "#d98b5e";
+          ctx.beginPath();
+          ctx.arc(bodyW * .73, -bodyH * .47, 10 * scale, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = "#e0bc84";
+          ctx.fillRect(-bodyW * .9, -bodyH * .3, bodyW * 1.25, 7 * scale);
+          ctx.restore();
+          return;
+        }
+
+        const stride = run * 8 * scale;
+        ctx.strokeStyle = "#292e28";
+        ctx.lineWidth = 9 * scale;
+        ctx.lineCap = "round";
+        ctx.beginPath();
+        ctx.moveTo(-8 * scale, -3 * scale);
+        ctx.lineTo(-11 * scale + stride, 18 * scale);
+        ctx.moveTo(8 * scale, -3 * scale);
+        ctx.lineTo(11 * scale - stride, 18 * scale);
+        ctx.stroke();
+        ctx.fillStyle = "#dfb76d";
+        roundedRect(-20 * scale + stride, 14 * scale, 18 * scale, 7 * scale, 3 * scale);
+        ctx.fill();
+        roundedRect(2 * scale - stride, 14 * scale, 18 * scale, 7 * scale, 3 * scale);
+        ctx.fill();
+
+        ctx.strokeStyle = "#d98b5e";
+        ctx.lineWidth = 7 * scale;
+        ctx.beginPath();
+        ctx.moveTo(-bodyW * .38, -bodyH * .62);
+        ctx.lineTo(-bodyW * .67 - run * 5, -bodyH * .3);
+        ctx.moveTo(bodyW * .38, -bodyH * .62);
+        ctx.lineTo(bodyW * .67 + run * 5, -bodyH * .34);
+        ctx.stroke();
+        ctx.fillStyle = "#24493b";
+        roundedRect(-bodyW / 2, -bodyH * .76, bodyW, bodyH * .8, 12 * scale);
+        ctx.fill();
+        ctx.fillStyle = "#d7a655";
+        roundedRect(-bodyW * .42, -bodyH * .48, bodyW * .84, 7 * scale, 3 * scale);
+        ctx.fill();
+
+        ctx.fillStyle = "#d98b5e";
+        ctx.beginPath();
+        ctx.arc(0, -bodyH * .95, 13 * scale, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#34291f";
+        ctx.beginPath();
+        ctx.arc(0, -bodyH * 1.02, 13 * scale, Math.PI, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#f0c56f";
+        ctx.fillRect(-15 * scale, -bodyH * 1.02, 30 * scale, 4 * scale);
+        ctx.fillStyle = "#fff";
+        ctx.beginPath();
+        ctx.arc(4 * scale, -bodyH * .95, 2.1 * scale, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      function pushTriangle(a, b, c, color) {
+        scene.positions.push(...a, ...b, ...c);
+        scene.colors.push(...color, ...color, ...color);
+      }
+
+      function pushQuad(a, b, c, d, color) {
+        pushTriangle(a, b, c, color);
+        pushTriangle(a, c, d, color);
+      }
+
+      function box(x, y, z, width, height, depth, color) {
+        const x0 = x - width / 2, x1 = x + width / 2;
+        const y0 = y, y1 = y + height;
+        const z0 = z - depth / 2, z1 = z + depth / 2;
+        const [r, g, b] = color;
+        const shade = factor => [r * factor, g * factor, b * factor];
+        pushQuad([x0,y0,z1],[x1,y0,z1],[x1,y1,z1],[x0,y1,z1],shade(1.14));
+        pushQuad([x1,y0,z0],[x0,y0,z0],[x0,y1,z0],[x1,y1,z0],shade(.68));
+        pushQuad([x0,y0,z0],[x0,y0,z1],[x0,y1,z1],[x0,y1,z0],shade(.83));
+        pushQuad([x1,y0,z1],[x1,y0,z0],[x1,y1,z0],[x1,y1,z1],shade(.94));
+        pushQuad([x0,y1,z1],[x1,y1,z1],[x1,y1,z0],[x0,y1,z0],shade(1.2));
+        pushQuad([x0,y0,z0],[x1,y0,z0],[x1,y0,z1],[x0,y0,z1],shade(.48));
+      }
+
+      function plane(x, y, z, width, depth, color) {
+        const x0 = x - width / 2, x1 = x + width / 2;
+        const z0 = z - depth / 2, z1 = z + depth / 2;
+        pushQuad([x0,y,z0],[x1,y,z0],[x1,y,z1],[x0,y,z1],color);
+      }
+
+      function cone(x, y, z, radius, height, color, segments = 7) {
+        const tip = [x, y + height, z];
+        for (let i = 0; i < segments; i++) {
+          const a = (i / segments) * Math.PI * 2;
+          const b = ((i + 1) / segments) * Math.PI * 2;
+          const first = [x + Math.cos(a) * radius, y, z + Math.sin(a) * radius];
+          const second = [x + Math.cos(b) * radius, y, z + Math.sin(b) * radius];
+          const shade = i % 2 ? .9 : 1.08;
+          pushTriangle(first, second, tip, color.map(value => value * shade));
+          pushTriangle([x,y,z], second, first, color.map(value => value * .62));
+        }
+      }
+
+      function sphere(x, y, z, radius, color, rings = 5, segments = 8) {
+        for (let ring = 0; ring < rings; ring++) {
+          const top = Math.PI * ring / rings;
+          const bottom = Math.PI * (ring + 1) / rings;
+          for (let segment = 0; segment < segments; segment++) {
+            const a = Math.PI * 2 * segment / segments;
+            const b = Math.PI * 2 * (segment + 1) / segments;
+            const point = (latitude, longitude) => [
+              x + radius * Math.sin(latitude) * Math.cos(longitude),
+              y + radius * Math.cos(latitude),
+              z + radius * Math.sin(latitude) * Math.sin(longitude)
+            ];
+            const p0 = point(top, a), p1 = point(bottom, a);
+            const p2 = point(bottom, b), p3 = point(top, b);
+            const faceColor = color.map(value => value * (.7 + .35 * Math.max(0, Math.cos(a))));
+            if (ring > 0) pushTriangle(p0, p1, p3, faceColor);
+            if (ring < rings - 1) pushTriangle(p3, p1, p2, faceColor);
+          }
+        }
+      }
+
+      function cylinderZ(x, y, z, radius, depth, color, segments = 10) {
+        const front = z + depth / 2;
+        const back = z - depth / 2;
+        for (let i = 0; i < segments; i++) {
+          const a = (i / segments) * Math.PI * 2;
+          const b = ((i + 1) / segments) * Math.PI * 2;
+          const ax = x + Math.cos(a) * radius, ay = y + Math.sin(a) * radius;
+          const bx = x + Math.cos(b) * radius, by = y + Math.sin(b) * radius;
+          pushQuad([ax,ay,back],[bx,by,back],[bx,by,front],[ax,ay,front],color.map(value => value * .58));
+          pushTriangle([x,y,front],[ax,ay,front],[bx,by,front],color);
+          pushTriangle([x,y,back],[bx,by,back],[ax,ay,back],color.map(value => value * .68));
+        }
+      }
+
+      function tree(x, z, size) {
+        box(x, 0, z, .24 * size, 1.2 * size, .24 * size, [.28,.18,.1]);
+        cone(x, .55 * size, z, .88 * size, 1.45 * size, [.13,.31,.17]);
+        cone(x, 1.25 * size, z, .69 * size, 1.3 * size, [.17,.39,.19]);
+        cone(x, 1.9 * size, z, .47 * size, 1.05 * size, [.22,.45,.21]);
+      }
+
+      function addWorld() {
+        plane(0, -.14, -72, 400, 360, [.22,.37,.22]);
+        plane(0, -.035, -65, 9.6, 190, [.46,.35,.22]);
+        box(-4.68, 0, -65, .18, .08, 190, [.8,.69,.43]);
+        box(4.68, 0, -65, .18, .08, 190, [.8,.69,.43]);
+
+        const dashOffset = (state.distance * 1.15) % 9;
+        for (const x of [-1.55, 1.55]) {
+          for (let i = 0; i < 20; i++) {
+            const z = 7 - i * 9 + dashOffset;
+            box(x, .008, z, .065, .02, 3.6, [.81,.7,.49]);
+          }
+        }
+
+        const scroll = (state.distance * .78) % 15;
+        for (let i = -1; i < 13; i++) {
+          const z = 8 - i * 15 + scroll;
+          const size = .75 + ((i + 13) % 4) * .13;
+          const offset = (i % 2) * 1.8;
+          tree(-6.8 - offset, z, size);
+          tree(6.8 + offset, z - 7, size);
+          if (i % 3 === 0) {
+            cone(-5.45, 0, z - 5, .4, 1.1, [.2,.39,.17]);
+            cone(5.45, 0, z - 11, .48, 1.2, [.18,.35,.15]);
+          }
+        }
+      }
+
+      function addCoins() {
+        for (const object of state.objects) {
+          if (object.type !== "coin" || object.distance < -2 || object.distance > 125) continue;
+          const x = (object.lane - 1) * 3.1;
+          const z = -object.distance;
+          const rotation = state.distance * .09 + (object.phase || 0);
+          const width = .4 * Math.max(.16, Math.abs(Math.cos(rotation)));
+          const y = 1.12 + Math.sin(rotation) * .08;
+          cylinderZ(x, y, z, width, .12, [.98,.59,.08], 9);
+          cylinderZ(x, y, z + .071, width * .72, .018, [1,.83,.32], 9);
+        }
+      }
+
+      function addObstacles() {
+        for (const object of state.objects) {
+          if (object.type !== "obstacle" || object.distance < -2 || object.distance > 125) continue;
+          const x = (object.lane - 1) * 3.1;
+          const z = -object.distance;
+          if (object.kind === "log") {
+            box(x, .02, z, 2.1, .65, .7, [.35,.2,.1]);
+            box(x, .56, z, 2.18, .12, .78, [.42,.39,.18]);
+            sphere(x - 1.04, .34, z, .29, [.58,.34,.16], 4, 7);
+          } else if (object.kind === "arch") {
+            box(x - .83, 0, z, .32, 2.1, .5, [.36,.25,.14]);
+            box(x + .83, 0, z, .32, 2.1, .5, [.36,.25,.14]);
+            box(x, 1.8, z, 2.02, .55, .62, [.53,.34,.18]);
+            box(x, 1.75, z + .34, 1.04, .9, .08, [.18,.14,.09]);
+          } else {
+            sphere(x - .3, .43, z, .57, [.3,.3,.24], 4, 6);
+            sphere(x + .28, .34, z - .12, .48, [.38,.36,.28], 4, 6);
+            box(x, .03, z, .95, .16, .85, [.28,.28,.22]);
+          }
+        }
+      }
+
+      function addPlayer() {
+        const x = (state.lanePosition - 1) * 3.1;
+        const run = state.mode === "running" ? Math.sin(state.distance * .65) : 0;
+        const jump = state.jump > 0 ? Math.sin((1 - state.jump / .8) * Math.PI) * 1.75 : 0;
+        const sliding = state.slide > 0;
+        const lean = (state.lane - state.lanePosition) * .1;
+        const bodyY = sliding ? .47 : 1.05 + jump;
+
+        if (sliding) {
+          box(x, .36, .03, 1.05, .54, .8, [.13,.3,.23]);
+          sphere(x + .59, .48, .07, .32, [.77,.43,.29], 5, 8);
+          box(x - .25, .13, .28, .85, .15, .32, [.2,.17,.12]);
+          return;
+        }
+        box(x - .19 - run * .07, .42 + Math.max(0, run) * .18 + jump, .05, .22, .68, .28, [.16,.17,.14]);
+        box(x + .19 + run * .07, .42 + Math.max(0, -run) * .18 + jump, .05, .22, .68, .28, [.18,.19,.15]);
+        box(x - .19 - run * .09, .39 + Math.max(0, run) * .18 + jump, .29, .46, .14, .62, [.78,.59,.32]);
+        box(x + .19 + run * .09, .39 + Math.max(0, -run) * .18 + jump, .29, .46, .14, .62, [.78,.59,.32]);
+        box(x, bodyY, 0, .83, .9, .48, [.12,.29,.23]);
+        box(x, bodyY + .08, .26, .64, .12, .035, [.79,.55,.22]);
+        box(x - .54 - lean, bodyY + .1 - run * .1, 0, .22, .65, .22, [.75,.4,.26]);
+        box(x + .54 - lean, bodyY + .1 + run * .1, 0, .22, .65, .22, [.75,.4,.26]);
+        sphere(x, bodyY + .68, 0, .31, [.78,.46,.31], 7, 10);
+        sphere(x, bodyY + .86, -.025, .31, [.18,.12,.08], 4, 9);
+        box(x, bodyY + .86, .08, .67, .09, .45, [.87,.66,.32]);
+        sphere(x + .09, bodyY + .69, .275, .045, [.98,.92,.72], 4, 6);
+      }
+
+      function draw() {
+        if (!gl || !state.width || !state.height || !scene.program) return;
+        scene.positions.length = 0;
+        scene.colors.length = 0;
+        addWorld();
+        addCoins();
+        addObstacles();
+        addPlayer();
+        makePerspective(scene.projection, Math.PI / 3.25, state.width / state.height, .1, 240);
+        makeLookAt(scene.view, [0, 7.2, 12], [0, 1.1, -24]);
+        multiplyMatrices(scene.viewProjection, scene.projection, scene.view);
+
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+        gl.useProgram(scene.program);
+        gl.bindBuffer(gl.ARRAY_BUFFER, scene.buffer);
+        const vertexCount = scene.positions.length / 3;
+        const packed = new Float32Array(vertexCount * 6);
+        for (let i = 0; i < vertexCount; i++) {
+          const position = i * 3;
+          const target = i * 6;
+          packed[target] = scene.positions[position];
+          packed[target + 1] = scene.positions[position + 1];
+          packed[target + 2] = scene.positions[position + 2];
+          packed[target + 3] = scene.colors[position];
+          packed[target + 4] = scene.colors[position + 1];
+          packed[target + 5] = scene.colors[position + 2];
+        }
+        gl.bufferData(gl.ARRAY_BUFFER, packed, gl.DYNAMIC_DRAW);
+        gl.enableVertexAttribArray(scene.positionLocation);
+        gl.vertexAttribPointer(scene.positionLocation, 3, gl.FLOAT, false, 24, 0);
+        gl.enableVertexAttribArray(scene.colorLocation);
+        gl.vertexAttribPointer(scene.colorLocation, 3, gl.FLOAT, false, 24, 12);
+        gl.uniformMatrix4fv(scene.matrixLocation, false, scene.viewProjection);
+        gl.drawArrays(gl.TRIANGLES, 0, vertexCount);
+      }
+
+      function addPattern() {
+        const lane = Math.floor(random(0, 3));
+        const roll = Math.random();
+        const kind = roll < .36 ? "rock" : roll < .72 ? "log" : "arch";
+        const type = Math.random() < .62 ? "coin" : "obstacle";
+        const distanceAhead = state.spawnDistance - state.distance;
+        if (type === "obstacle") {
+          state.objects.push({ type, kind, lane, distance: distanceAhead });
+          if (Math.random() < .35) {
+            const coinLane = (lane + 1 + Math.floor(Math.random() * 2)) % 3;
+            for (let i = 0; i < 5; i++) {
+              state.objects.push({ type: "coin", lane: coinLane, distance: distanceAhead + 7 + i * 3, phase: i });
+            }
+          }
+        } else {
+          const count = 5 + Math.floor(Math.random() * 3);
+          for (let i = 0; i < count; i++) {
+            state.objects.push({ type: "coin", lane, distance: distanceAhead + i * 3.2, phase: i });
+          }
+        }
+        state.spawnDistance += random(28, 39);
+      }
+
+      function update(dt) {
+        if (state.mode !== "running") return;
+        state.distance += state.speed * dt;
+        state.speed = Math.min(43, 24 + state.distance * .018);
+        state.roadScroll += dt * state.speed * .012;
+        state.lanePosition += (state.lane - state.lanePosition) * (1 - Math.exp(-18 * dt));
+        state.jump = Math.max(0, state.jump - dt);
+        state.slide = Math.max(0, state.slide - dt);
+
+        while (state.spawnDistance < state.distance + 100) addPattern();
+        for (const object of state.objects) {
+          const previousDistance = object.distance;
+          object.distance -= state.speed * dt;
+          const crossedPlayer = previousDistance > impactDistance && object.distance <= impactDistance;
+          const inLane = Math.abs(state.lanePosition - object.lane) < .38;
+          if (crossedPlayer && inLane) {
+            if (object.type === "coin") {
+              object.distance = -100;
+              state.coins++;
+              playEffect("coin");
+            } else {
+              const clears = object.kind === "log" ? state.jump > 0 : object.kind === "arch" ? state.slide > 0 : false;
+              if (!clears) {
+                finishGame();
+                break;
+              }
+              object.distance = -100;
+            }
+          }
+        }
+        state.objects = state.objects.filter(object => object.distance > -5);
+        distanceLabel.textContent = Math.floor(state.distance).toString();
+        coinsLabel.textContent = state.coins.toString();
+      }
+
+      function startGame() {
+        state.mode = "running";
+        state.lane = 1;
+        state.lanePosition = 1;
+        state.jump = 0;
+        state.slide = 0;
+        state.distance = 0;
+        state.coins = 0;
+        state.speed = 24;
+        state.objects = [];
+        state.spawnDistance = 32;
+        distanceLabel.textContent = "0";
+        coinsLabel.textContent = "0";
+        overlay.classList.add("hidden");
+        state.lastTime = performance.now();
+        if (state.musicEnabled) startMusic();
+        else {
+          const audio = initializeAudio();
+          if (audio) audio.resume();
+        }
+      }
+
+      function finishGame() {
+        state.mode = "over";
+        playEffect("hit");
+        const distance = Math.floor(state.distance);
+        if (distance > state.best) {
+          state.best = distance;
+          localStorage.setItem("jungleDashBest", String(distance));
+        }
+        eyebrow.textContent = "The jungle caught up";
+        title.innerHTML = "Run over.";
+        copy.textContent = `You made it ${distance}m and collected ${state.coins} ${state.coins === 1 ? "coin" : "coins"}. Ready for one more run?`;
+        startButton.textContent = "Run it back";
+        bestLabel.textContent = `Personal best: ${state.best}m`;
+        overlay.classList.remove("hidden");
+      }
+
+      function move(action) {
+        if (state.mode !== "running") return;
+        if (action === "left" || action === "right") {
+          const previousLane = state.lane;
+          state.lane = clamp(state.lane + (action === "left" ? -1 : 1), 0, 2);
+          if (state.lane !== previousLane) playEffect("move");
+        } else if (action === "jump" && state.jump <= 0 && state.slide <= 0) {
+          state.jump = .8;
+          playEffect("jump");
+        } else if (action === "slide" && state.slide <= 0 && state.jump <= 0) {
+          state.slide = .72;
+          playEffect("slide");
+        }
+      }
+
+      function frame(time) {
+        const dt = Math.min((time - state.lastTime) / 1000 || 0, .04);
+        state.lastTime = time;
+        update(dt);
+        draw();
+        requestAnimationFrame(frame);
+      }
+
+      document.addEventListener("keydown", event => {
+        const actions = {
+          ArrowLeft: "left", a: "left", A: "left",
+          ArrowRight: "right", d: "right", D: "right",
+          ArrowUp: "jump", w: "jump", W: "jump", " ": "jump",
+          ArrowDown: "slide", s: "slide", S: "slide"
+        };
+        if (event.repeat) return;
+        if (actions[event.key]) {
+          event.preventDefault();
+          if (state.mode !== "running" && (event.key === " " || event.key === "Enter")) startGame();
+          else move(actions[event.key]);
+        } else if (event.key === "Enter" && state.mode !== "running") startGame();
+      });
+
+      let touchStart = null;
+      canvas.addEventListener("pointerdown", event => {
+        touchStart = { x: event.clientX, y: event.clientY };
+      });
+      canvas.addEventListener("pointerup", event => {
+        if (!touchStart) return;
+        const dx = event.clientX - touchStart.x;
+        const dy = event.clientY - touchStart.y;
+        touchStart = null;
+        if (Math.max(Math.abs(dx), Math.abs(dy)) < 22) return;
+        if (Math.abs(dx) > Math.abs(dy)) move(dx < 0 ? "left" : "right");
+        else move(dy < 0 ? "jump" : "slide");
+      });
+      canvas.addEventListener("pointercancel", () => { touchStart = null; });
+      startButton.addEventListener("click", startGame);
+      musicToggle.addEventListener("click", () => {
+        state.musicEnabled = !state.musicEnabled;
+        updateMusicButton();
+        if (state.musicEnabled) startMusic();
+        else stopMusic();
+      });
+      window.addEventListener("resize", resize);
+
+      bestLabel.textContent = state.best ? `Personal best: ${state.best}m` : "Your best run starts now.";
+      updateMusicButton();
+      initializeScene();
+      resize();
+      requestAnimationFrame(frame);
+    })();
+  </script>
+</body>
+</html>
